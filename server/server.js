@@ -31,58 +31,13 @@ function decryptPassword(encryptedText) {
     return null;
   }
 }
-mongoose.connect("mongodb+srv://sukesh31:Sukesh31@cluster0.41zgf.mongodb.net/", {
+mongoose.connect("mongodb+srv://sukesh31:sukesh2006@cluster0.41zgf.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
 .then(() => console.log("Connected to MongoDB"))
 .catch((err) => console.error("MongoDB Connection Error:", err));
 
-const otpStore = {}; 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "vemurisukesh31012006@gmail.com", 
-    pass: "lsga rqri jwqg idbj", 
-  },
-});
-app.post("/send-otp", async (req, res) => {
-  const { email } = req.body;
-  const user = await User.findOne({ email });
-  if (!user) return res.status(404).json({ message: "User not found" });
-  const otp = Math.floor(100000 + Math.random() * 900000).toString(); 
-  otpStore[email] = otp;
-  const mailOptions = {
-    from: "vemurisukesh31012006@gmail.com",
-    to: email,
-    subject: "Your OTP Code",
-    text: `Use ${otp} as your one-time code to proceed. This code is valid for 10 minutes. Thank you for using StatusHub!`,
-  };
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) return res.status(500).json({ message: "Error sending email" });
-    res.json({ message: "OTP sent successfully" });
-  });
-});
-app.post("/verify-otp", (req, res) => {
-  const { email, otp } = req.body;
-  if (otpStore[email] && otpStore[email] === otp) {
-    delete otpStore[email]; 
-    res.json({ message: "OTP verified successfully" });
-  } else {
-    res.status(400).json({ message: "Invalid or expired OTP" });
-  }
-});
-app.post("/reset-password", async (req, res) => {
-  const { email, newPassword } = req.body;
-  const encryptedPassword = encryptPassword(newPassword);
-  const user = await User.findOneAndUpdate(
-    { email },
-    { password: encryptedPassword},
-    { new: true }
-  );
-  if (!user) return res.status(404).json({ message: "User not found" });
-  res.json({ message: "Password reset successfully" });
-});
 const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true }
@@ -131,6 +86,52 @@ app.post("/login", async (req, res) => {
     console.error("Login error:", error);
     res.status(500).json({ error: "Server error" });
   }
+});
+
+const otpStore = {}; 
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "vemurisukesh31012006@gmail.com", 
+    pass: "wcxv htzt ekck agjj", 
+  },
+});
+app.post("/send-otp", async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
+  if (!user) return res.status(404).json({ message: "User not found" });
+  const otp = Math.floor(100000 + Math.random() * 900000).toString(); 
+  otpStore[email] = otp;
+  const mailOptions = {
+    from: "vemurisukesh31012006@gmail.com",
+    to: email,
+    subject: "Your OTP Code",
+    text: `Use ${otp} as your one-time code to proceed. This code is valid for 10 minutes. Thank you for using StatusHub!`,
+  };
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) return res.status(500).json({ message: "Error sending email" });
+    res.json({ message: "OTP sent successfully" });
+  });
+});
+app.post("/verify-otp", (req, res) => {
+  const { email, otp } = req.body;
+  if (otpStore[email] && otpStore[email] === otp) {
+    delete otpStore[email]; 
+    res.json({ message: "OTP verified successfully" });
+  } else {
+    res.status(400).json({ message: "Invalid or expired OTP" });
+  }
+});
+app.post("/reset-password", async (req, res) => {
+  const { email, newPassword } = req.body;
+  const encryptedPassword = encryptPassword(newPassword);
+  const user = await User.findOneAndUpdate(
+    { email },
+    { password: encryptedPassword},
+    { new: true }
+  );
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json({ message: "Password reset successfully" });
 });
 const OwnerSchema = new mongoose.Schema({
   name: String,

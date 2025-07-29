@@ -1,279 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:animate_do/animate_do.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'package:encrypt/encrypt.dart' as encrypt;
+import 'dart:convert';
+import 'dart:ui'; // <-- Add this line
+
 class SuperAdminPage extends StatefulWidget {
   @override
   _SuperAdminPageState createState() => _SuperAdminPageState();
 }
+
 class _SuperAdminPageState extends State<SuperAdminPage> {
-  TextEditingController _searchController = TextEditingController();
+  final _searchController = TextEditingController();
   Map<String, dynamic>? _selectedOwner;
-  List<Map<String, dynamic>> _users = [];
-  List<Map<String, dynamic>> _owners = [];
-  List<Map<String, dynamic>> _admins = [];
-  List<Map<String, dynamic>> _filteredUsers = [];
-  List<Map<String, dynamic>> _filteredOwners = [];
-  List<Map<String, dynamic>> _filteredAdmins = [];
-  String selectedRole = "users"; 
-  final String apiUrl = "http://localhost:5002"; 
-  @override
-  void initState() {
-    super.initState();
-    _fetchData();
-    _searchController.addListener(_onSearchChanged); 
-  }
-  @override
-  void dispose() {
-    _searchController.removeListener(_onSearchChanged);
-    _searchController.dispose();
-    super.dispose();
-  }
-  void _onSearchChanged() {
-    setState(() {
-      if (selectedRole == "users") {
-        _filteredUsers = _searchController.text.isEmpty
-            ? _users
-            : _users
-                .where((user) =>
-                    user['email'].toLowerCase().contains(_searchController.text.toLowerCase()))
-                .toList();
-      } else if (selectedRole == "owners") {
-        _filteredOwners = _searchController.text.isEmpty
-            ? _owners
-            : _owners
-                .where((owner) =>
-                    owner['shopname'].toLowerCase().contains(_searchController.text.toLowerCase()))
-                .toList();
-      } else if (selectedRole == "admins") {
-        _filteredAdmins = _searchController.text.isEmpty
-            ? _admins
-            : _admins
-                .where((admin) =>
-                    admin['username'].toLowerCase().contains(_searchController.text.toLowerCase()))
-                .toList();
-      }
-    });
-  }
-  String decryptPassword(String encryptedText) {
-    try {
-      final parts = encryptedText.split(":");
-      if (parts.length != 2) return "Invalid format";
-      final ivHex = parts[0]; 
-      final encryptedHex = parts[1]; 
-      final key = encrypt.Key.fromUtf8("sukeshpavanjayakrishnanarasaredd"); 
-      final iv = encrypt.IV.fromBase16(ivHex); 
-      final encrypter = encrypt.Encrypter(encrypt.AES(key, mode: encrypt.AESMode.cbc));
-      final decrypted = encrypter.decrypt(encrypt.Encrypted.fromBase16(encryptedHex), iv: iv);
-      return decrypted;
-    } catch (e) {
-      print("Decryption error: $e");
-      return "Error decrypting";
-    }
-  }
-  Future<void> _deleteOwner(String username) async {
-  bool confirmDelete = await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Delete Owner'),
-        content: Text('Are you sure you want to delete this owner?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false), 
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true), 
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
-  );
-  if (!confirmDelete) return;
-  try {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleting owner...')),
-    );
-    final response = await http.delete(Uri.parse("$apiUrl/delete-owner/$username"));
-    if (response.statusCode == 200) {
-      setState(() {
-        _admins.removeWhere((owner) => owner['username'] == username);
-        _filteredAdmins.removeWhere((owner) => owner['username'] == username);
-        _selectedOwner = null; 
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Owner deleted successfully')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete owner')));
-    }
-  } catch (error) {
-    print("Error deleting owner: $error");
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred while deleting owner')));
-  }
-}
-  Future<void> _deleteUser(String email) async {
-  bool confirmDelete = await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Delete User'),
-        content: Text('Are you sure you want to delete this user?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false), 
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true), 
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
-  );
-  if (!confirmDelete) return;
-  try {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleting user...')),
-    );
-    final response = await http.delete(Uri.parse("$apiUrl/delete-user/$email"));
-    if (response.statusCode == 200) {
-      setState(() {
-        _admins.removeWhere((user) => user['email'] == email);
-        _filteredAdmins.removeWhere((user) => user['email'] == email);
-        _selectedOwner = null; 
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User deleted successfully')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete user')));
-    }
-  } catch (error) {
-    print("Error deleting user: $error");
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred while deleting user')));
-  }
-}
-  Future<void> _deleteAdmin(String username) async {
-  bool confirmDelete = await showDialog(
-    context: context,
-    builder: (context) {
-      return AlertDialog(
-        title: Text('Delete Admin'),
-        content: Text('Are you sure you want to delete this admin?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false), 
-            child: Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true), 
-            child: Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      );
-    },
-  );
-  if (!confirmDelete) return;
-  try {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleting admin...')),
-    );
-    final response = await http.delete(Uri.parse("$apiUrl/delete-admin/$username"));
-    if (response.statusCode == 200) {
-      setState(() {
-        _admins.removeWhere((admin) => admin['username'] == username);
-        _filteredAdmins.removeWhere((admin) => admin['username'] == username);
-        _selectedOwner = null; 
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Admin deleted successfully')));
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete admin')));
-    }
-  } catch (error) {
-    print("Error deleting admin: $error");
-    ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An error occurred while deleting admin')));
-  }
-}
-  Future<void> _updateOwner() async {
-    if (_selectedOwner == null) return;
-    TextEditingController nameController = TextEditingController(text: _selectedOwner!['name']);
-    TextEditingController shopController = TextEditingController(text: _selectedOwner!['shopname']);
-    TextEditingController addressController = TextEditingController(text: _selectedOwner!['address']);
-    TextEditingController phoneController = TextEditingController(text: _selectedOwner!['phone']);
-    TextEditingController userController = TextEditingController(text: _selectedOwner!['username']);
-    TextEditingController latitudeController = TextEditingController(text: _selectedOwner!['latitude']);
-    TextEditingController longitudeController = TextEditingController(text: _selectedOwner!['longitude']);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Update Owner Details'),
-          content: SingleChildScrollView(
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.5,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(controller: nameController, decoration: InputDecoration(labelText: 'Name')),
-                  TextField(controller: shopController, decoration: InputDecoration(labelText: 'Shop Name')),
-                  TextField(controller: addressController, decoration: InputDecoration(labelText: 'Address')),
-                  TextField(controller: phoneController, decoration: InputDecoration(labelText: 'Phone Number')),
-                  TextField(controller: userController, decoration: InputDecoration(labelText: 'Username')),
-                  TextField(controller: latitudeController, decoration: InputDecoration(labelText: 'Latitude')),
-                  TextField(controller: longitudeController, decoration: InputDecoration(labelText: 'Longitude')),
-                ],
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
-            TextButton(
-              onPressed: () async {
-                final updatedData = {
-                  "name": nameController.text,
-                  "shopname": shopController.text,
-                  "address": addressController.text,
-                  "phone": phoneController.text,
-                  "username": userController.text,
-                  "latitude": latitudeController.text,
-                  "longitude": longitudeController.text
-                };
-                try {
-                  final response = await http.put(
-                    Uri.parse("$apiUrl/update-owner/${_selectedOwner!['username']}"),
-                    headers: {"Content-Type": "application/json"},
-                    body: jsonEncode(updatedData),
-                  );
-                  if (response.statusCode == 200) {
-                    setState(() {
-                      _fetchData(); 
-                      _selectedOwner = null; 
-                    });
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Owner updated successfully')));
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update owner')));
-                  }
-                } catch (error) {
-                  print("Error updating owner: $error");
-                }
-                Navigator.pop(context);
-              },
-              child: Text('Update'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  List<Map<String, dynamic>> _users = [], _owners = [], _admins = [];
+  List<Map<String, dynamic>> _filteredUsers = [], _filteredOwners = [], _filteredAdmins = [];
+  Map<String, dynamic>? _selected;
+  String selectedRole = "users";
+  final String apiUrl = "http://localhost:5002";
+
+  // Add missing methods
   Future<void> _updateAdmin() async {
   if (_selectedOwner == null) return;
   TextEditingController nameController = TextEditingController(text: _selectedOwner!['name']);
@@ -356,6 +103,31 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
     },
   );
 }
+
+  Future<void> _deleteAdmin(String username) async {
+    // TODO: Implement delete admin logic (e.g., send delete request to backend)
+    try {
+      final response = await http.delete(Uri.parse('$apiUrl/delete-admin/$username'));
+      if (response.statusCode == 200) {
+        setState(() {
+          _admins.removeWhere((admin) => admin['username'] == username);
+          _filteredAdmins.removeWhere((admin) => admin['username'] == username);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Admin deleted successfully'))
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete admin'))
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting admin: $e'))
+      );
+    }
+  }
+
   Future<void> _updateUser() async {
     if (_selectedOwner == null) return;
     TextEditingController emailController = TextEditingController(text: _selectedOwner!['email']);
@@ -409,445 +181,562 @@ class _SuperAdminPageState extends State<SuperAdminPage> {
       },
     );
   }
-  Future<void> _fetchData() async {
+
+  Future<void> _deleteUser(String email) async {
+    // TODO: Implement delete user logic
     try {
-      final usersResponse = await http.get(Uri.parse("$apiUrl/get-users"));
-      final ownersResponse = await http.get(Uri.parse("$apiUrl/get-owners"));
-      final adminsResponse = await http.get(Uri.parse("$apiUrl/get-admins"));
-      if (usersResponse.statusCode == 200 &&
-          ownersResponse.statusCode == 200 &&
-          adminsResponse.statusCode == 200) {
-        final usersData = json.decode(usersResponse.body);
-        final ownersData = json.decode(ownersResponse.body);
-        final adminsData = json.decode(adminsResponse.body);
+      final response = await http.delete(Uri.parse('$apiUrl/delete-user/$email'));
+      if (response.statusCode == 200) {
         setState(() {
-          _users = usersData is List ? List<Map<String, dynamic>>.from(usersData) : [];
-          _owners = ownersData is List ? List<Map<String, dynamic>>.from(ownersData) : [];
-          _admins = adminsData is List ? List<Map<String, dynamic>>.from(adminsData) : [];
-          _filteredUsers = _users; 
-          _filteredOwners = _owners;
-          _filteredAdmins = _admins;
+          _users.removeWhere((user) => user['email'] == email);
+          _filteredUsers.removeWhere((user) => user['email'] == email);
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('User deleted successfully'))
+        );
       } else {
-        print("Failed to fetch data. Status codes: Users(${usersResponse.statusCode}), Owners(${ownersResponse.statusCode}), Admins(${adminsResponse.statusCode})");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete user'))
+        );
       }
-    } catch (error) {
-      print("Error fetching data: $error");
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting user: $e'))
+      );
     }
   }
-  Widget _buildUserCard(Map<String, dynamic> user) {
-    final String email = user['email']?.toString() ?? "Unknown";
-    final String encryptedPassword = user['password']?.toString() ?? "Unknown";
-    final String password = decryptPassword(encryptedPassword);
-    return SizedBox(
-      width: MediaQuery.of(context).size.width * 0.6, 
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        margin: EdgeInsets.symmetric(vertical: 10),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "User Details",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              Divider(),
-              ListTile(
-                leading: Icon(Icons.person, color: Colors.blue),
-                title: Text(email),
-                subtitle: Text("Password: $password"),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      _selectedOwner = user; 
-                      _updateUser(); 
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    child: Text("Update", style: TextStyle(color: Colors.white)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      _selectedOwner = user; 
-                      _deleteUser(user['email']); 
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: Text("Delete", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  Widget _buildOwnerCard(Map<String, dynamic> owner) {
-    final String name = owner['name']?.toString() ?? "Unknown";
-    final String shopName = owner['shopname']?.toString() ?? "Unknown";
-    final String address = owner['address']?.toString() ?? "Unknown";
-    final String phone = owner['phone']?.toString() ?? "Unknown";
-    final String username = owner['username']?.toString() ?? "Unknown";
-    final String encryptedPassword = owner['password']?.toString() ?? "Unknown";
-    final String password = decryptPassword(encryptedPassword);
-    final String latitude = owner['latitude']?.toString() ?? "Unknown";
-    final String longitude = owner['longitude']?.toString() ?? "Unknown";
-    return SizedBox(
-      width: MediaQuery.of(context).size.width * 0.6,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        margin: EdgeInsets.symmetric(vertical: 10),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Owner Details",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              Divider(),
-              ListTile(
-                leading: Icon(Icons.store, color: Colors.green),
-                title: Text("$name - $shopName"),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Address: $address"),
-                    Text("Phone Number: $phone"),
-                    Text("Username: $username"),
-                    Text("Password: $password"),
-                    Text("Latitude: $latitude"),
-                    Text("Longitude: $longitude"),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      _selectedOwner = owner; 
-                      _updateOwner(); 
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    child: Text("Update", style: TextStyle(color: Colors.white)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      _selectedOwner = owner; 
-                      _deleteOwner(owner['username']); 
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: Text("Delete", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  Widget _buildAdminCard(Map<String, dynamic> admin) {
-    final String name = admin['name']?.toString() ?? "Unknown";
-    final String address = admin['address']?.toString() ?? "Unknown";
-    final String username = admin['username']?.toString() ?? "Unknown";
-    final String encryptedPassword = admin['password']?.toString() ?? "Unknown";
-    final String password = decryptPassword(encryptedPassword);
-    return SizedBox(
-      width: MediaQuery.of(context).size.width * 0.6,
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        margin: EdgeInsets.symmetric(vertical: 10),
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Admin Details",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              Divider(),
-              ListTile(
-                leading: Icon(Icons.person, color: Colors.blue),
-                title: Text(name),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Address: $address"),
-                    Text("Username: $username"),
-                    Text("Password: $password"),
-                  ],
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                       _selectedOwner = admin; 
-                      _updateAdmin(); 
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
-                    child: Text("Update", style: TextStyle(color: Colors.white)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      _selectedOwner = admin; 
-                      _deleteAdmin(admin['username']);
-                    },
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                    child: Text("Delete", style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Super Admin Dashboard'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.exit_to_app),
-            onPressed: () {
-              _showLogoutDialog(context);
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.refresh),
-            onPressed: () {
-              _fetchData();
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: 'Search',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.search),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildRoleButton("users"),
-                _buildRoleButton("owners"),
-                _buildRoleButton("admins"),
-              ],
-            ),
-            SizedBox(height: 20),
-            Expanded(
-              child: selectedRole == "users"
-                  ? _buildUserList()
-                  : selectedRole == "owners"
-                      ? _buildOwnerList()
-                      : _buildAdminList(),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.more_vert),
-        onPressed: () {
-          _showRoleMenu(context);
-        },
-      ),
-    );
-  }
-  Widget _buildRoleButton(String role) {
-    return ElevatedButton(
-      onPressed: () {
-        setState(() {
-          selectedRole = role;
-          _searchController.clear(); 
-        });
-      },
-      style: ElevatedButton.styleFrom(
-        backgroundColor: selectedRole == role ? Colors.blue : Colors.grey,
-      ),
-      child: Text(role),
-    );
-  }
-  Widget _buildUserList() {
-    return _filteredUsers.isEmpty
-        ? Center(child: Text("No matching users found"))
-        : ListView.builder(
-            itemCount: _filteredUsers.length,
-            itemBuilder: (context, index) {
-              final user = _filteredUsers[index];
-              return ListTile(
-                title: Text(user['email']),
-                subtitle: Text("Password: ${decryptPassword(user['password'])}"),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text("User Details"),
-                        content: _buildUserCard(user),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text("Close"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
-  }
-  Widget _buildOwnerList() {
-    return _filteredOwners.isEmpty
-        ? Center(child: Text("No matching owners found"))
-        : ListView.builder(
-            itemCount: _filteredOwners.length,
-            itemBuilder: (context, index) {
-              final owner = _filteredOwners[index];
-              return ListTile(
-                title: Text(owner['shopname']),
-                subtitle: Text("Address: ${owner['address']}"),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text("Owner Details"),
-                        content: _buildOwnerCard(owner),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text("Close"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
-  }
-  Widget _buildAdminList() {
-    return _filteredAdmins.isEmpty
-        ? Center(child: Text("No matching admins found"))
-        : ListView.builder(
-            itemCount: _filteredAdmins.length,
-            itemBuilder: (context, index) {
-              final admin = _filteredAdmins[index];
-              return ListTile(
-                title: Text(admin['username']),
-                subtitle: Text("Password: ${decryptPassword(admin['password'])}"),
-                onTap: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: Text("Admin Details"),
-                        content: _buildAdminCard(admin),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: Text("Close"),
-                          ),
-                        ],
-                      );
-                    },
-                  );
-                },
-              );
-            },
-          );
-  }
-  Future<void> _showLogoutDialog(BuildContext context) async {
-    return showDialog<void>(
+
+  Future<void> _updateOwner() async {
+    if (_selectedOwner == null) return;
+    TextEditingController nameController = TextEditingController(text: _selectedOwner!['name']);
+    TextEditingController shopController = TextEditingController(text: _selectedOwner!['shopname']);
+    TextEditingController addressController = TextEditingController(text: _selectedOwner!['address']);
+    TextEditingController phoneController = TextEditingController(text: _selectedOwner!['phone']);
+    TextEditingController userController = TextEditingController(text: _selectedOwner!['username']);
+    TextEditingController latitudeController = TextEditingController(text: _selectedOwner!['latitude']);
+    TextEditingController longitudeController = TextEditingController(text: _selectedOwner!['longitude']);
+    showDialog(
       context: context,
-      barrierDismissible: false, 
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          title: Text('Logout'),
-          content: Text('Do you want to logout?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); 
-              },
-              child: Text('Cancel'),
+          title: Text('Update Owner Details'),
+          content: SingleChildScrollView(
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: InputDecoration(labelText: 'Name')),
+                  TextField(controller: shopController, decoration: InputDecoration(labelText: 'Shop Name')),
+                  TextField(controller: addressController, decoration: InputDecoration(labelText: 'Address')),
+                  TextField(controller: phoneController, decoration: InputDecoration(labelText: 'Phone Number')),
+                  TextField(controller: userController, decoration: InputDecoration(labelText: 'Username')),
+                  TextField(controller: latitudeController, decoration: InputDecoration(labelText: 'Latitude')),
+                  TextField(controller: longitudeController, decoration: InputDecoration(labelText: 'Longitude')),
+                ],
+              ),
             ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); 
-                Navigator.pushReplacementNamed(context, '/adminLogin'); 
+              onPressed: () async {
+                final updatedData = {
+                  "name": nameController.text,
+                  "shopname": shopController.text,
+                  "address": addressController.text,
+                  "phone": phoneController.text,
+                  "username": userController.text,
+                  "latitude": latitudeController.text,
+                  "longitude": longitudeController.text
+                };
+                try {
+                  final response = await http.put(
+                    Uri.parse("$apiUrl/update-owner/${_selectedOwner!['username']}"),
+                    headers: {"Content-Type": "application/json"},
+                    body: jsonEncode(updatedData),
+                  );
+                  if (response.statusCode == 200) {
+                    setState(() {
+                      _fetchData(); 
+                      _selectedOwner = null; 
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Owner updated successfully')));
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update owner')));
+                  }
+                } catch (error) {
+                  print("Error updating owner: $error");
+                }
+                Navigator.pop(context);
               },
-              child: Text('OK'),
+              child: Text('Update'),
             ),
           ],
         );
       },
     );
   }
-  void _showRoleMenu(BuildContext context) {
-    final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-        overlay.size.width - 150, 
-        overlay.size.height - 200,
-        10,
-        10,
-      ),
-      items: [
-        PopupMenuItem(
-          child: ListTile(
-            leading: Icon(Icons.person_add),
-            title: Text('Admin Register'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/adminRegister');
-            },
-          ),
+
+  Future<void> _deleteOwner(String username) async {
+    // TODO: Implement delete owner logic
+    try {
+      final response = await http.delete(Uri.parse('$apiUrl/delete-owner/$username'));
+      if (response.statusCode == 200) {
+        setState(() {
+          _owners.removeWhere((owner) => owner['username'] == username);
+          _filteredOwners.removeWhere((owner) => owner['username'] == username);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Owner deleted successfully'))
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete owner'))
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error deleting owner: $e'))
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _searchController.addListener(_onSearchChanged);
+  }
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final q = _searchController.text.toLowerCase();
+    setState(() {
+      if (selectedRole == "users") {
+        _filteredUsers = q.isEmpty ? _users : _users.where((u) => (u['email'] ?? '').toLowerCase().contains(q)).toList();
+      } else if (selectedRole == "owners") {
+        _filteredOwners = q.isEmpty ? _owners : _owners.where((o) => (o['shopname'] ?? '').toLowerCase().contains(q)).toList();
+      } else {
+        _filteredAdmins = q.isEmpty ? _admins : _admins.where((a) => (a['username'] ?? '').toLowerCase().contains(q)).toList();
+      }
+    });
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      final usersResponse = await http.get(Uri.parse("$apiUrl/get-users"));
+      final ownersResponse = await http.get(Uri.parse("$apiUrl/get-owners"));
+      final adminsResponse = await http.get(Uri.parse("$apiUrl/get-admins"));
+      if (usersResponse.statusCode == 200 && ownersResponse.statusCode == 200 && adminsResponse.statusCode == 200) {
+        setState(() {
+          _users = List<Map<String, dynamic>>.from(json.decode(usersResponse.body));
+          _owners = List<Map<String, dynamic>>.from(json.decode(ownersResponse.body));
+          _admins = List<Map<String, dynamic>>.from(json.decode(adminsResponse.body));
+          _filteredUsers = _users;
+          _filteredOwners = _owners;
+          _filteredAdmins = _admins;
+        });
+      }
+    } catch (err) {
+      print("Error loading data: $err");
+    }
+  }
+
+  String decryptPassword(String encryptedText) {
+    try {
+      final parts = encryptedText.split(":");
+      if (parts.length != 2) return "Invalid format";
+      final ivHex = parts[0], encryptedHex = parts[1];
+      final key = encrypt.Key.fromUtf8("sukeshpavanjayakrishnanarasaredd");
+      final iv = encrypt.IV.fromBase16(ivHex);
+      final encrypter = encrypt.Encrypter(encrypt.AES(key, mode: encrypt.AESMode.cbc));
+      return encrypter.decrypt(encrypt.Encrypted.fromBase16(encryptedHex), iv: iv);
+    } catch (_) { return "Error decrypting"; }
+  }
+
+  // Dialog and list item builders (see previous completions for update/delete logic...)
+
+  Widget _buildRoleToggle() {
+    return ToggleButtons(
+      borderRadius: BorderRadius.circular(16),
+      fillColor: Colors.deepPurple,
+      selectedColor: Colors.white,
+      isSelected: [
+        selectedRole == "users", selectedRole == "owners", selectedRole == "admins"
+      ],
+      onPressed: (i) {
+        setState(() {
+          selectedRole = ["users", "owners", "admins"][i];
+          _searchController.clear();
+        });
+      },
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Text("Users", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 15)),
         ),
-        PopupMenuItem(
-          child: ListTile(
-            leading: Icon(Icons.person_add),
-            title: Text('Owner Register'),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/ownerRegister');
-            },
-          ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Text("Owners", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 15)),
+        ),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+          child: Text("Admins", style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 15)),
         ),
       ],
+    );
+  }
+
+  Widget _listCard({required Widget leading, required String title, String? subtitle, required void Function() onTap}) {
+    return Card(
+      color: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 2,
+      child: ListTile(
+        leading: leading,
+        title: Text(title, style: GoogleFonts.montserrat(fontWeight: FontWeight.w600)),
+        subtitle: subtitle != null ? Text(subtitle, style: GoogleFonts.montserrat(fontSize: 13)) : null,
+        trailing: Icon(Icons.arrow_forward_ios, size: 18, color: Colors.deepPurple),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  Widget _buildUserList() {
+    if (_filteredUsers.isEmpty) return Center(child: Text("No matching users found", style: GoogleFonts.montserrat()));
+    return ListView.separated(
+      itemCount: _filteredUsers.length,
+      separatorBuilder: (_, __) => SizedBox(height: 6),
+      itemBuilder: (c, i) {
+        final user = _filteredUsers[i];
+        return ZoomIn(
+          duration: Duration(milliseconds: 220 + 40*i),
+          child: _listCard(
+            leading: CircleAvatar(backgroundColor: Colors.deepPurple[100], child: Icon(Icons.person, color: Colors.deepPurple)),
+            title: user['email'],
+            subtitle: "Password: ${decryptPassword(user['password'])}",
+            onTap: () => _showDetailDialog(title: "User Details", child: _buildUserDetail(user))
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserDetail(Map<String, dynamic> user) {
+    return _detailCard([
+      _detailLine("Email", user['email']),
+      _detailLine("Password", decryptPassword(user['password'])),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _updateBtn(() { _selected = user; _updateUser(); }),
+          _deleteBtn(() { _selected = user; _deleteUser(user['email']); }),
+        ],
+      ),
+    ]);
+  }
+
+  Widget _buildOwnerList() {
+    if (_filteredOwners.isEmpty) return Center(child: Text("No matching owners found", style: GoogleFonts.montserrat()));
+    return ListView.separated(
+      itemCount: _filteredOwners.length,
+      separatorBuilder: (_, __) => SizedBox(height: 6),
+      itemBuilder: (c, i) {
+        final owner = _filteredOwners[i];
+        return ZoomIn(
+          duration: Duration(milliseconds: 240 + 40*i),
+          child: _listCard(
+            leading: CircleAvatar(backgroundColor: Colors.green[100], child: Icon(Icons.store, color: Colors.green)),
+            title: owner['shopname'],
+            subtitle: "Address: ${owner['address']}",
+            onTap: () => _showDetailDialog(title: "Owner Details", child: _buildOwnerDetail(owner))
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildOwnerDetail(Map<String, dynamic> o) {
+    return _detailCard([
+      _detailLine("Name", o['name']),
+      _detailLine("Shop", o['shopname']),
+      _detailLine("Address", o['address']),
+      _detailLine("Phone", o['phone']),
+      _detailLine("Username", o['username']),
+      _detailLine("Password", decryptPassword(o['password'])),
+      _detailLine("Latitude", o['latitude']),
+      _detailLine("Longitude", o['longitude']),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _updateBtn(() { _selected = o; _updateOwner(); }),
+          _deleteBtn(() { _selected = o; _deleteOwner(o['username']); }),
+        ],
+      ),
+    ]);
+  }
+
+  Widget _buildAdminList() {
+    if (_filteredAdmins.isEmpty) return Center(child: Text("No matching admins found", style: GoogleFonts.montserrat()));
+    return ListView.separated(
+      itemCount: _filteredAdmins.length,
+      separatorBuilder: (_, __) => SizedBox(height: 6),
+      itemBuilder: (c, i) {
+        final admin = _filteredAdmins[i];
+        return ZoomIn(
+          duration: Duration(milliseconds: 260 + 45*i),
+          child: _listCard(
+            leading: CircleAvatar(backgroundColor: Colors.blue[100], child: Icon(Icons.admin_panel_settings, color: Colors.blue[900])),
+            title: admin['username'],
+            subtitle: "Password: ${decryptPassword(admin['password'])}",
+            onTap: () => _showDetailDialog(title: "Admin Details", child: _buildAdminDetail(admin))
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdminDetail(Map<String, dynamic> a) {
+    return _detailCard([
+      _detailLine("Name", a['name']),
+      _detailLine("Address", a['address']),
+      _detailLine("Username", a['username']),
+      _detailLine("Password", decryptPassword(a['password'])),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          _updateBtn(() { _selected = a; _updateAdmin(); }),
+          _deleteBtn(() { _selected = a; _deleteAdmin(a['username']); }),
+        ],
+      ),
+    ]);
+  }
+
+  Widget _detailCard(List<Widget> children) {
+    return GlassCard(
+      child: Padding(
+        padding: EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: children,
+        ),
+      ),
+    );
+  }
+  Widget _detailLine(String title, dynamic value) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Text("$title: ${value ?? 'Unknown'}", style: GoogleFonts.montserrat(fontSize: 15)),
+  );
+  Widget _updateBtn(VoidCallback cb) => TextButton.icon(
+    icon: Icon(Icons.edit, color: Colors.deepPurple),
+    label: Text('Update', style: GoogleFonts.montserrat(color: Colors.deepPurple)),
+    onPressed: cb,
+    style: TextButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+  );
+  Widget _deleteBtn(VoidCallback cb) => TextButton.icon(
+    icon: Icon(Icons.delete, color: Colors.red),
+    label: Text('Delete', style: GoogleFonts.montserrat(color: Colors.red)),
+    onPressed: cb,
+    style: TextButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+  );
+
+  void _showDetailDialog({required String title, required Widget child}) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: Colors.white,
+        title: Text(title, style: GoogleFonts.montserrat(fontWeight: FontWeight.bold, fontSize: 21)),
+        content: SingleChildScrollView(child: child),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("Close", style: GoogleFonts.montserrat()),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRoleMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white.withOpacity(0.96),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(22))),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 21),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: Icon(Icons.admin_panel_settings, color: Colors.deepPurple),
+              title: Text('Admin Register', style: GoogleFonts.montserrat()),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/adminRegister');
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.store, color: Colors.green),
+              title: Text('Owner Register', style: GoogleFonts.montserrat()),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(context, '/ownerRegister');
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showLogoutDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: Text('Logout', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        content: Text('Do you want to logout?', style: GoogleFonts.montserrat()),
+        actions: <Widget>[
+          TextButton(child: Text('Cancel'), onPressed: () => Navigator.of(context).pop()),
+          FilledButton(
+            child: Text('Logout'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              Navigator.pushReplacementNamed(context, '/adminLogin');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.of(context).size.width;
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(20))),
+        backgroundColor: Colors.deepPurple.withOpacity(0.93),
+        elevation: 9,
+        title: Text('Super Admin Dashboard', style: GoogleFonts.montserrat(
+          fontWeight: FontWeight.bold, color: Colors.white, fontSize: 22,
+        )),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.exit_to_app, color: Colors.white),
+            tooltip: 'Logout',
+            onPressed: () => _showLogoutDialog(context),
+          ),
+          IconButton(
+            icon: Icon(Icons.refresh, color: Colors.white),
+            tooltip: 'Refresh',
+            onPressed: () => _fetchData(),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: Colors.deepPurple,
+        foregroundColor: Colors.white,
+        icon: Icon(Icons.person_add),
+        label: Text('Add', style: GoogleFonts.montserrat(fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        onPressed: () => _showRoleMenu(context),
+      ),
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  colors: [Color(0xFFA7BFE8), Color(0xFFF3F8FF)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight),
+            ),
+          ),
+          Center(
+            child: Container(
+              constraints: BoxConstraints(maxWidth: 1080),
+              margin: EdgeInsets.symmetric(horizontal: 7, vertical: 16),
+              child: GlassCard(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: w < 700 ? 8 : 44, vertical: 20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      // Search
+                      Padding(
+                        padding: EdgeInsets.symmetric(vertical: w < 500 ? 9 : 12, horizontal: 7),
+                        child: TextField(
+                          controller: _searchController,
+                          style: GoogleFonts.montserrat(),
+                          decoration: InputDecoration(
+                            hintText: "Search by Email / Shop / Username...",
+                            filled: true,
+                            fillColor: Color(0xFFF9F8FB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 15),
+                      _buildRoleToggle(),
+                      SizedBox(height: 20),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: Duration(milliseconds: 500),
+                          child: selectedRole == "users"
+                              ? _buildUserList()
+                              : selectedRole == "owners"
+                                  ? _buildOwnerList()
+                                  : _buildAdminList(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Glassmorphism reusable card
+class GlassCard extends StatelessWidget {
+  final Widget child;
+  const GlassCard({required this.child});
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(19),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.93),
+            borderRadius: BorderRadius.circular(19),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.deepPurple.withOpacity(0.07),
+                blurRadius: 28,
+                offset: Offset(2, 20),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 }
